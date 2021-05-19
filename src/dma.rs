@@ -68,6 +68,7 @@ where
 impl<BUFFER, PAYLOAD, CHANNEL, const N: usize> FrameReader<BUFFER, RxDma<PAYLOAD, CHANNEL>, N>
 where
     PAYLOAD: CharacterMatch,
+    BUFFER: Sized + StableDeref<Target = DMAFrame<N>> + DerefMut + 'static,
 {
     /// Checks to see if the peripheral has detected a character match and
     /// clears the flag
@@ -394,7 +395,7 @@ macro_rules! dma {
                 use core::ptr;
                 use stable_deref_trait::StableDeref;
 
-                use crate::dma::{CircBuffer, FrameReader, CharacterMatch, FrameSender, DMAFrame, DmaExt, Error, Event, Half, Transfer, W, R, RxDma, TxDma, TransferPayload};
+                use crate::dma::{CircBuffer, FrameReader, FrameSender, DMAFrame, DmaExt, Error, Event, Half, Transfer, W, R, RxDma, TxDma, TransferPayload};
                 use crate::rcc::AHB1;
 
                 #[allow(clippy::manual_non_exhaustive)]

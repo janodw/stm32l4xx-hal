@@ -412,10 +412,7 @@ impl ADC {
     }
 
     pub fn enable(&mut self) {
-        rtt_target::rprintln!("int en");
         if !self.is_enabled() {
-            rtt_target::rprintln!("int en1");
-
             // Make sure bits are off
             while self.adc.cr.read().addis().bit_is_set() {}
 
@@ -433,9 +430,6 @@ impl ADC {
                 }
             });
             //self.adc.cfgr.modify(|_, w | {w.cont().set_bit()});
-        }
-        else{
-            rtt_target::rprintln!("int en2");
         }
     }
 

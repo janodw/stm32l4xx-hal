@@ -865,7 +865,6 @@ where
         let (enable, circular) = match dma_mode {
             DmaMode::Disabled => (false, false),
             DmaMode::Oneshot => (true, false),
-            DmaMode::Circular => (true, true),
         };
 
         adc.adc

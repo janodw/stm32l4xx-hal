@@ -114,6 +114,11 @@ macro_rules! hal {
                     // it should be cleared
                     self.clear_update_interrupt_flag();
 
+                    rtt_target::rprintln!("mms init");
+                    unsafe {
+                        self.tim.cr2.modify(|_, w| w.mms().bits(0x02));
+                    }
+
                     // start counter
                     self.tim.cr1.modify(|_, w| w.cen().set_bit());
                 }
@@ -146,6 +151,9 @@ macro_rules! hal {
                         tim,
                         timeout: Hertz(0),
                     };
+
+                    rtt_target::rprintln!("mms1");
+
                     timer.start(timeout);
 
                     timer
@@ -186,6 +194,11 @@ macro_rules! hal {
                     // that the timer is already finished. Since this is not the case,
                     // it should be cleared
                     tim.sr.modify(|_, w| w.uif().clear_bit());
+
+                    rtt_target::rprintln!("mms");
+                    unsafe {
+                        tim.cr2.modify(|_, w| w.mms().bits(0x02));
+                    }
 
                     // start counter
                     tim.cr1.modify(|_, w| {

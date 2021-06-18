@@ -59,6 +59,11 @@ macro_rules! hal {
                     // it should be cleared
                     self.clear_update_interrupt_flag();
 
+                    rtt_target::rprintln!("mms init");
+                    unsafe {
+                        self.tim.cr2.modify(|_, w| w.mms().bits(0x02));
+                    }
+
                     // start counter
                     self.tim.cr1.modify(|_, w| w.cen().set_bit());
                 }
@@ -92,6 +97,9 @@ macro_rules! hal {
                         tim,
                         timeout: Hertz(0),
                     };
+
+                    rtt_target::rprintln!("mms1");
+
                     timer.start(timeout);
 
                     timer
@@ -133,6 +141,11 @@ macro_rules! hal {
                     // that the timer is already finished. Since this is not the case,
                     // it should be cleared
                     tim.sr.modify(|_, w| w.uif().clear_bit());
+
+                    rtt_target::rprintln!("mms");
+                    unsafe {
+                        tim.cr2.modify(|_, w| w.mms().bits(0x02));
+                    }
 
                     // start counter
                     tim.cr1.modify(|_, w| {
@@ -215,8 +228,6 @@ hal! {
     TIM2:  (tim2, free_running_tim2, tim2en, tim2rst, APB1R1, u32),
     TIM6:  (tim6, free_running_tim6, tim6en, tim6rst, APB1R1, u16),
     TIM7:  (tim7, free_running_tim7, tim7en, tim7rst, APB1R1, u16),
-    TIM15: (tim15, free_running_tim15, tim15en, tim15rst, APB2, u16),
-    TIM16: (tim16, free_running_tim16, tim16en, tim16rst, APB2, u16),
 }
 
 #[cfg(any(feature = "stm32l4x5", feature = "stm32l4x6",))]

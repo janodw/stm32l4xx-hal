@@ -31,6 +31,7 @@ pub struct ADC {
     resolution: Resolution,
     sample_time: SampleTime,
     calibrated_vdda: u32,
+    external_trigger: (config::TriggerMode, config::ExternalTrigger),
 }
 
 #[derive(Copy, Clone, PartialEq)]
@@ -122,7 +123,10 @@ impl ADC {
         ahb: &mut AHB2,
         ccipr: &mut CCIPR,
         delay: &mut impl DelayUs<u32>,
+        external_trigger: (config::TriggerMode, config::ExternalTrigger),
     ) -> Self {
+
+        rtt_target::rprintln!("adc_new");
         // Enable peripheral
         ahb.enr().modify(|_, w| w.adcen().set_bit());
 
@@ -170,6 +174,7 @@ impl ADC {
             resolution: Resolution::default(),
             sample_time: SampleTime::default(),
             calibrated_vdda: VDDA_CALIB_MV,
+            external_trigger: (config::TriggerMode::Disabled, config::ExternalTrigger::Tim_1_cc_1),
         };
 
         // Temporarily enable Vref
@@ -177,8 +182,20 @@ impl ADC {
 
         s.calibrate(&mut vref);
 
+        s.set_external_trigger(external_trigger);
+
         s.common.ccr.modify(|_, w| w.vrefen().clear_bit());
         s
+    }
+
+    /// change the external_trigger field
+    pub fn external_trigger(
+        mut self,
+        trigger_mode: config::TriggerMode,
+        trigger: config::ExternalTrigger,
+    ) -> Self {
+        self.external_trigger = (trigger_mode, trigger);
+        self
     }
 
     /// Enable and get the `Vref`
@@ -319,7 +336,7 @@ impl ADC {
     pub(crate) fn get_sequence_length(&self) -> u8 {
         #[cfg(not(feature = "stm32l4x6"))]
         {
-            self.adc.sqr1.read().l3().bits()
+            self.adc.sqr1.read().l().bits()
         }
         #[cfg(feature = "stm32l4x6")]
         {
@@ -332,7 +349,7 @@ impl ADC {
     fn set_sequence_length(&mut self, length: u8) {
         #[cfg(not(feature = "stm32l4x6"))]
         {
-            self.adc.sqr1.modify(|_, w| unsafe { w.l3().bits(length) });
+            self.adc.sqr1.modify(|_, w| unsafe { w.l().bits(length) });
         }
         #[cfg(feature = "stm32l4x6")]
         {
@@ -347,7 +364,7 @@ impl ADC {
     pub fn reset_sequence(&mut self) {
         #[cfg(not(feature = "stm32l4x6"))]
         {
-            self.adc.sqr1.modify(|_, w| unsafe { w.l3().bits(0b0000) })
+            self.adc.sqr1.modify(|_, w| unsafe { w.l().bits(0b0000) })
         }
         #[cfg(feature = "stm32l4x6")]
         {
@@ -378,7 +395,7 @@ impl ADC {
 
     pub fn start_cont_conversion(&mut self) {
         self.enable();
-        self.enable_continous();
+        //self.enable_continous();
         self.clear_end_flags();
         self.adc.cr.modify(|_, w| w.adstart().set_bit());
     }
@@ -439,6 +456,17 @@ impl ADC {
     pub fn disable(&mut self) {
         self.adc.cr.modify(|_, w| w.addis().set_bit());
     }
+
+                    /// Sets which external trigger to use and if it is disabled, rising, falling or both
+                    pub fn set_external_trigger(&mut self, (edge, extsel): (config::TriggerMode, config::ExternalTrigger)) {
+                        rtt_target::rprintln!("set_external_trigger");
+                        self.external_trigger = (edge, extsel);
+                        self.adc.cfgr.modify(|_, w| unsafe { w
+                            .extsel().bits(extsel.into())
+                            .exten().bits(edge.into())
+                        }
+                        );
+                    }
 
     pub fn log_regs(&self) {
         rtt_target::rprintln!("isr = {:#b}", self.adc.isr.read().bits());
@@ -550,6 +578,78 @@ impl Default for SampleTime {
 pub trait Channel: EmbeddedHalChannel<ADC, ID = u8> {
     fn set_sample_time(&mut self, adc: &ADC1, sample_time: SampleTime);
 }
+
+    /// Contains types related to ADC configuration
+    pub mod config {
+/// Possible external triggers the ADC can listen to
+    #[derive(Debug, Clone, Copy)]
+    pub enum ExternalTrigger {
+        /// TIM1 compare channel 1
+        Tim_1_cc_1,
+        /// TIM1 compare channel 2
+        Tim_1_cc_2,
+        /// TIM1 compare channel 3
+        Tim_1_cc_3,
+        /// TIM2 compare channel 2
+        Tim_2_cc_2,
+        /// TIM3 trigger out
+        Tim_3_trgo,
+        /// External interupt line 11
+        Exti_11,
+        /// TIM1 trigger out
+        Tim_1_trgo,
+        /// TIM1 trigger out 2
+        Tim_1_trgo2,
+        /// TIM2 trigger out
+        Tim_2_trgo,
+        /// TIM6 trigger out
+        Tim_6_trgo,
+        /// TIM15 trigger out
+        Tim_15_trgo,
+    }
+
+    impl From<ExternalTrigger> for u8 {
+        fn from(et: ExternalTrigger) -> u8 {
+            match et {
+                ExternalTrigger::Tim_1_cc_1 => 0b0000,      // EXT0
+                ExternalTrigger::Tim_1_cc_2 => 0b0001,      // EXT1
+                ExternalTrigger::Tim_1_cc_3 => 0b0010,      // EXT2
+                ExternalTrigger::Tim_2_cc_2 => 0b0011,      // EXT3
+                ExternalTrigger::Tim_3_trgo => 0b0100,      // EXT4
+                ExternalTrigger::Exti_11 => 0b0110,         // EXT6
+                ExternalTrigger::Tim_1_trgo => 0b1001,      // EXT9
+                ExternalTrigger::Tim_1_trgo2 => 0b1010,     // EXT10
+                ExternalTrigger::Tim_2_trgo => 0b1011,      // EXT11
+                ExternalTrigger::Tim_6_trgo => 0b1101,      // EXT13
+                ExternalTrigger::Tim_15_trgo => 0b1110,      // EXT14
+            }
+        }
+    }
+
+    /// Possible trigger modes
+    #[derive(Debug, Clone, Copy)]
+    pub enum TriggerMode {
+        /// Don't listen to external trigger
+        Disabled,
+        /// Listen for rising edges of external trigger
+        RisingEdge,
+        /// Listen for falling edges of external trigger
+        FallingEdge,
+        /// Listen for both rising and falling edges of external trigger
+        BothEdges,
+    }
+    impl From<TriggerMode> for u8 {
+        fn from(tm: TriggerMode) -> u8 {
+            match tm {
+                TriggerMode::Disabled => 0b00,
+                TriggerMode::RisingEdge => 0b01,
+                TriggerMode::FallingEdge => 0b10,
+                TriggerMode::BothEdges => 0b11,
+            }
+        }
+    }
+}
+
 
 macro_rules! adc_pins {
     (

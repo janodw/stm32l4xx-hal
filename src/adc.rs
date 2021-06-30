@@ -571,7 +571,7 @@ where
         atomic::compiler_fence(Ordering::Release);
 
         channel.start();
-        adc.start_conversion();
+        adc.start_cont_conversion();
 
         Transfer::w(
             buffer,

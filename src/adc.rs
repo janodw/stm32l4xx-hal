@@ -449,9 +449,6 @@ impl ADC {
         self.adc.cr.modify(|_, w| w.addis().set_bit());
     }
 
-    pub fn log_regs(&self) {
-        rtt_target::rprintln!("isr = {:#b}", self.adc.isr.read().bits());
-    }
 }
 
 impl<C> OneShot<ADC, u16, C> for ADC

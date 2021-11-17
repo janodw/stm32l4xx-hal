@@ -385,11 +385,19 @@ impl ADC {
         self.adc.cr.modify(|_, w| w.adstart().set_bit());
     }
 
+    pub fn start_cont_conversion(&mut self) {
+        self.enable();
+        self.enable_continous();
+        self.clear_end_flags();
+        self.adc.cr.modify(|_, w| w.adstart().set_bit());
+    }
+
     pub fn is_converting(&self) -> bool {
         self.adc.cr.read().adstart().bit_is_set()
     }
 
     pub fn listen(&mut self, event: Event) {
+        //rtt_target::rprintln!("int en");
         self.adc.ier.modify(|_, w| match event {
             Event::EndOfRegularSequence => w.eosie().set_bit(),
             Event::EndOfRegularConversion => w.eocie().set_bit(),
@@ -404,7 +412,10 @@ impl ADC {
     }
 
     pub fn enable(&mut self) {
+        rtt_target::rprintln!("int en");
         if !self.is_enabled() {
+            rtt_target::rprintln!("int en1");
+
             // Make sure bits are off
             while self.adc.cr.read().addis().bit_is_set() {}
 
@@ -417,9 +428,23 @@ impl ADC {
             self.adc.cfgr.modify(|_, w| {
                 // This is sound, as all `Resolution` values are valid for this
                 // field.
-                unsafe { w.res().bits(self.resolution as u8) }
+                unsafe {
+                    w.res().bits(self.resolution as u8)
+                }
             });
+            //self.adc.cfgr.modify(|_, w | {w.cont().set_bit()});
         }
+        else{
+            rtt_target::rprintln!("int en2");
+        }
+    }
+
+    pub fn enable_continous(&mut self) {
+        self.adc.cfgr.modify(|_, w | {w.cont().set_bit()});
+    }
+
+    pub fn disable_continous(&mut self) {
+        self.adc.cfgr.modify(|_, w | {w.cont().clear_bit()});
     }
 
     pub fn is_enabled(&self) -> bool {
@@ -428,6 +453,10 @@ impl ADC {
 
     pub fn disable(&mut self) {
         self.adc.cr.modify(|_, w| w.addis().set_bit());
+    }
+
+    pub fn log_regs(&self) {
+        rtt_target::rprintln!("isr = {:#b}", self.adc.isr.read().bits());
     }
 }
 

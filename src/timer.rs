@@ -182,6 +182,9 @@ macro_rules! hal {
                         tim,
                         timeout: 0.Hz(),
                     };
+
+                    rtt_target::rprintln!("mms1");
+
                     timer.start(timeout);
 
                     timer
@@ -297,6 +300,20 @@ macro_rules! hal {
                 pub fn free(mut self) -> $TIM {
                     self.pause();
                     self.tim
+                }
+            }   
+        )+
+    }
+}
+
+macro_rules! master_mode {
+    ($($TIM:ident,)+) => {
+        $(
+            impl Timer<$TIM> {
+                pub fn master_mode(&mut self, mode: MasterMode) {
+                    unsafe {
+                        self.tim.cr2.modify(|_, w| w.mms().bits(mode.into()));
+                    }
                 }
             }
         )+

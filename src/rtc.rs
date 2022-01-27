@@ -627,21 +627,10 @@ impl timer::Cancel for WakeupTimer<'_> {
     fn cancel(&mut self) -> Result<(), Self::Error> {
         self.rtc.write(false, |rtc| {
             // Disable the wakeup timer
+            // Reference manual (RM0394 Rev 4 page 1039) - Programming the wakeup timer
             rtc.cr.modify(|_, w| w.wute().clear_bit());
             while !rtc_registers::is_wakeup_timer_write_flag_set(rtc) {}
             rtc_registers::clear_wakeup_timer_flag(rtc);
-
-            // According to the reference manual, section 26.7.4, the WUTF flag
-            // must be cleared at least 1.5 RTCCLK periods "before WUTF is set
-            // to 1 again". If that's true, we're on the safe side, because we
-            // use ck_spre as the clock for this timer, which we've scaled to 1
-            // Hz.
-            //
-            // I have the sneaking suspicion though that this is a typo, and the
-            // quote in the previous paragraph actually tries to refer to WUTE
-            // instead of WUTF. In that case, this might be a bug, so if you're
-            // seeing something weird, adding a busy loop of some length here
-            // would be a good start of your investigation.
         });
 
         Ok(())

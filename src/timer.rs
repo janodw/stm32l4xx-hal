@@ -72,6 +72,7 @@ pub struct Timer<TIM> {
     clocks: Clocks,
     tim: TIM,
     timeout: Hertz,
+    clock_multiplier: u8
 }
 
 /// Interrupt events
@@ -108,7 +109,7 @@ impl Into<u8> for MasterMode {
 }
 
 macro_rules! hal {
-    ($($TIM:ident: ($tim:ident, $frname:ident, $apb:ident, $width:ident),)+) => {
+    ($($TIM:ident: ($tim:ident, $frname:ident, $apb:ident, $width:ident, $apb_prescaler:ident),)+) => {
         $(
             impl Periodic for Timer<$TIM> {}
 
@@ -177,13 +178,14 @@ macro_rules! hal {
                     <$TIM>::enable(apb);
                     <$TIM>::reset(apb);
 
+                    let clock_multiplier = if clocks.$apb_prescaler() > 1 { 2 } else { 1 };
+
                     let mut timer = Timer {
                         clocks,
                         tim,
                         timeout: 0.Hz(),
+                        clock_multiplier,
                     };
-
-                    rtt_target::rprintln!("mms1");
 
                     timer.start(timeout);
 
@@ -235,10 +237,13 @@ macro_rules! hal {
                         w
                     });
 
+                    let clock_multiplier = if clocks.$apb_prescaler() > 1 { 2 } else { 1 };
+
                     Timer {
                         clocks,
                         tim,
                         timeout: frequency,
+                        clock_multiplier
                     }
                 }
 
@@ -349,11 +354,11 @@ macro_rules! master_mode {
 }
 
 hal! {
-    TIM2:  (tim2, free_running_tim2, APB1R1, u32),
-    TIM6:  (tim6, free_running_tim6, APB1R1, u16),
-    //TIM7:  (tim7, free_running_tim7, APB1R1, u16),
-    TIM15: (tim15, free_running_tim15, APB2, u16),
-    TIM16: (tim16, free_running_tim16, APB2, u16),
+    TIM2:  (tim2, free_running_tim2, APB1R1, u32, ppre1),
+    TIM6:  (tim6, free_running_tim6, APB1R1, u16, ppre1),
+    //TIM7:  (tim7, free_running_tim7, APB1R1, u16, ppre1),
+    TIM15: (tim15, free_running_tim15, APB2, u16, ppre1),
+    TIM16: (tim16, free_running_tim16, APB2, u16, ppre1),
 }
 
 // no impl for TIM1, TIM7, TIM8, TIM15

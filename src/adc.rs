@@ -177,7 +177,6 @@ impl ADC {
             resolution: Resolution::default(),
             sample_time: SampleTime::default(),
             calibrated_vdda: VDDA_CALIB_MV,
-            //external_trigger
         };
 
         // Temporarily enable Vref

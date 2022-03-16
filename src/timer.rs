@@ -69,10 +69,9 @@ use fugit::RateExtU32;
 
 /// Hardware timers
 pub struct Timer<TIM> {
-    clocks: Clocks,
+    clock: Hertz,
     tim: TIM,
     timeout: Hertz,
-    clock_multiplier: u8
 }
 
 /// Interrupt events
@@ -109,7 +108,7 @@ impl Into<u8> for MasterMode {
 }
 
 macro_rules! hal {
-    ($($TIM:ident: ($tim:ident, $frname:ident, $apb:ident, $width:ident, $apb_prescaler:ident),)+) => {
+    ($($TIM:ident: ($tim:ident, $frname:ident, $apb:ident, $width:ident, $timclk:ident),)+) => {
         $(
             impl Periodic for Timer<$TIM> {}
 
@@ -126,7 +125,7 @@ macro_rules! hal {
                     self.pause();
 
                     self.timeout = timeout.into();
-                    let ticks = self.clocks.pclk1() / self.timeout; // TODO: Check pclk that timer is on.
+                    let ticks = self.clock / self.timeout; // TODO check pclk that timer is on
                     let psc = u16((ticks - 1) / (1 << 16)).unwrap();
 
                     self.tim.psc.write(|w| unsafe { w.psc().bits(psc) });
@@ -178,13 +177,12 @@ macro_rules! hal {
                     <$TIM>::enable(apb);
                     <$TIM>::reset(apb);
 
-                    let clock_multiplier = if clocks.$apb_prescaler() > 1 { 2 } else { 1 };
+                    let clock = clocks.$timclk();
 
                     let mut timer = Timer {
-                        clocks,
+                        clock,
                         tim,
                         timeout: 0.Hz(),
-                        clock_multiplier,
                     };
 
                     timer.start(timeout);
@@ -205,9 +203,11 @@ macro_rules! hal {
                     <$TIM>::enable(apb);
                     <$TIM>::reset(apb);
 
-                    let psc = clocks.pclk1() / frequency - 1;
+                    let clock = clocks.$timclk();
 
-                    debug_assert!(clocks.pclk1() >= frequency);
+                    let psc = clock / frequency - 1;
+
+                    debug_assert!(clock >= frequency);
                     debug_assert!(frequency.raw() > 0);
                     debug_assert!(psc <= core::u16::MAX.into());
 
@@ -237,13 +237,10 @@ macro_rules! hal {
                         w
                     });
 
-                    let clock_multiplier = if clocks.$apb_prescaler() > 1 { 2 } else { 1 };
-
                     Timer {
-                        clocks,
+                        clock,
                         tim,
                         timeout: frequency,
-                        clock_multiplier
                     }
                 }
 
@@ -354,11 +351,11 @@ macro_rules! master_mode {
 }
 
 hal! {
-    TIM2:  (tim2, free_running_tim2, APB1R1, u32, ppre1),
-    TIM6:  (tim6, free_running_tim6, APB1R1, u16, ppre1),
-    //TIM7:  (tim7, free_running_tim7, APB1R1, u16, ppre1),
-    TIM15: (tim15, free_running_tim15, APB2, u16, ppre1),
-    TIM16: (tim16, free_running_tim16, APB2, u16, ppre1),
+    TIM2:  (tim2, free_running_tim2, APB1R1, u32, timclk1),
+    TIM6:  (tim6, free_running_tim6, APB1R1, u16, timclk1),
+    //TIM7:  (tim7, free_running_tim7, APB1R1, u16, timclk1),
+    TIM15: (tim15, free_running_tim15, APB2, u16, timclk2),
+    TIM16: (tim16, free_running_tim16, APB2, u16, timclk2),
 }
 
 // no impl for TIM1, TIM7, TIM8, TIM15
@@ -396,7 +393,7 @@ hal! {
     feature = "stm32l462",
 )))]
 hal! {
-    TIM7:  (tim7, free_running_tim7, APB1R1, u16),
+    TIM7:  (tim7, free_running_tim7, APB1R1, u16, timclk1),
 }
 
 #[cfg(any(
@@ -416,7 +413,7 @@ hal! {
     // feature = "stm32l4s9",
 ))]
 hal! {
-    TIM4:  (tim4, free_running_tim4, APB1R1, u16),
-    TIM5:  (tim5, free_running_tim5, APB1R1, u32),
-    TIM17: (tim17, free_running_tim17, APB2, u16),
+    TIM4:  (tim4, free_running_tim4, APB1R1, u16, timclk1),
+    TIM5:  (tim5, free_running_tim5, APB1R1, u32, timclk1),
+    TIM17: (tim17, free_running_tim17, APB2, u16, timclk2),
 }

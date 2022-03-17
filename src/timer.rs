@@ -102,7 +102,7 @@ impl Into<u8> for MasterMode {
             MasterMode::CompareOC1REF => 4,
             MasterMode::CompareOC2REF => 5,
             MasterMode::CompareOC3REF => 6,
-            MasterMode::CompareOC4REF => 7,
+            MasterMode::CompareOC4REF => 7
         }
     }
 }
@@ -297,6 +297,20 @@ macro_rules! hal {
                 pub fn free(mut self) -> $TIM {
                     self.pause();
                     self.tim
+                }
+            }   
+        )+
+    }
+}
+
+macro_rules! master_mode {
+    ($($TIM:ident,)+) => {
+        $(
+            impl Timer<$TIM> {
+                pub fn master_mode(&mut self, mode: MasterMode) {
+                    unsafe {
+                        self.tim.cr2.modify(|_, w| w.mms().bits(mode.into()));
+                    }
                 }
             }
         )+

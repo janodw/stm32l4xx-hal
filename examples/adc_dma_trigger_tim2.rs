@@ -7,9 +7,9 @@ use stm32l4xx_hal::{
     adc::{config, DmaMode, SampleTime, Sequence, ADC},
     delay::DelayCM,
     dma::{dma1, RxDma, Transfer, W},
-    pac::TIM2,
+    timer::{Timer, Event, MasterMode},
     prelude::*,
-    timer::{Event, MasterMode, Timer},
+    pac::{TIM2},
 };
 
 use rtic::app;

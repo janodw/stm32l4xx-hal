@@ -102,7 +102,7 @@ impl Into<u8> for MasterMode {
             MasterMode::CompareOC1REF => 4,
             MasterMode::CompareOC2REF => 5,
             MasterMode::CompareOC3REF => 6,
-            MasterMode::CompareOC4REF => 7
+            MasterMode::CompareOC4REF => 7,
         }
     }
 }
@@ -298,7 +298,7 @@ macro_rules! hal {
                     self.pause();
                     self.tim
                 }
-            }   
+            }
         )+
     }
 }

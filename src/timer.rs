@@ -382,7 +382,7 @@ master_mode!(TIM2, TIM6,);
     // feature = "stm32l4s9",
 ))]
 hal! {
-    TIM3:  (tim3, free_running_tim3, APB1R1, u16),
+    TIM3:  (tim3, free_running_tim3, APB1R1, u16, timclk1),
 }
 
 #[cfg(not(any(
